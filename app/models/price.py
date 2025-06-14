@@ -1,13 +1,11 @@
-from sqlalchemy import Column, String, Float, DateTime
-from app.core.database import Base
+from sqlalchemy import Column, Integer, String, Float, DateTime
 from datetime import datetime
-import uuid
+from app.core.database import Base
 
-class PricePoint(Base):
-    __tablename__ = "price_points"
+class Price(Base):
+    __tablename__ = "prices"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    symbol = Column(String, index=True, nullable=False)
-    price = Column(Float, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
-    provider = Column(String, nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, index=True)
+    price = Column(Float)
+    timestamp = Column(DateTime, default=datetime.utcnow)

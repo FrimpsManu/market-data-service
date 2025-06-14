@@ -7,3 +7,4 @@ pydantic
 python-dotenv
 confluent-kafka
 alembic
+yfinance
