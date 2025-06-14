@@ -7,5 +7,5 @@ class Price(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     symbol = Column(String, index=True)
-    price = Column(Float)
+    value = Column(Float)
     timestamp = Column(DateTime, default=datetime.utcnow)
