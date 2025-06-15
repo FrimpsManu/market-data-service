@@ -55,7 +55,7 @@ market-data-service/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/market-data-service.git
+git clone https://github.com/FrimpsManu/market-data-service.git
 cd market-data-service
 ```
 
