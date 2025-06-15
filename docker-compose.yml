@@ -11,11 +11,15 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - default
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    networks:
+      - default
 
   zookeeper:
     image: bitnami/zookeeper:latest
@@ -23,22 +27,31 @@ services:
       - "2181:2181"
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
 
   kafka:
     image: bitnami/kafka:latest
-    environment:
-      - KAFKA_CFG_BROKER_ID=1
-      - KAFKA_CFG_PROCESS_ROLES=broker
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
-      - ALLOW_PLAINTEXT_LISTENER=yes
+    hostname: kafka
     ports:
       - "9092:9092"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - ALLOW_PLAINTEXT_LISTENER=yes
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
+    networks:
+      - default
+
 
   api:
     build: .
@@ -55,14 +68,17 @@ services:
       - POSTGRES_PORT=5432
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY}
+    restart: on-failure
     depends_on:
       - postgres
       - kafka
       - redis
+    networks:
+      - default
 
   worker:
     build: .
-    command: celery -A worker worker --loglevel=info
+    command: celery -A worker.celery_app worker --loglevel=info
     volumes:
       - .:/app
     environment:
@@ -75,10 +91,18 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY}
+      - PYTHONPATH=/app/app
+    restart: on-failure
     depends_on:
       - kafka
       - api
       - redis
+    networks:
+      - default
 
 volumes:
   pgdata:
+
+networks:
+  default:
+    name: market-data-service_default

@@ -9,6 +9,6 @@ COPY ./app ./app
 COPY main.py .
 
 
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/app
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

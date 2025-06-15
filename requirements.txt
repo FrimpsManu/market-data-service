@@ -4,10 +4,9 @@ sqlalchemy
 psycopg2-binary
 httpx
 pydantic
-python-dotenv
-confluent-kafka
+python-dotenv  
 alembic
 yfinance
 celery
 redis
-
+kafka-python
