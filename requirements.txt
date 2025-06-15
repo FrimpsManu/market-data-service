@@ -8,3 +8,6 @@ python-dotenv
 confluent-kafka
 alembic
 yfinance
+celery
+redis
+
