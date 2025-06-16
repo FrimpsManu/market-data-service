@@ -10,3 +10,4 @@ yfinance
 celery
 redis
 kafka-python
+pytest

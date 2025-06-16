@@ -1,15 +1,18 @@
 import os
 import json
+import logging
+from datetime import datetime
 from kafka import KafkaConsumer
+
 from app.core.database import SessionLocal
 from app.models.symbol_average import SymbolAverage
 from app.models.price import Price
-from datetime import datetime
+from app.utils.moving_average import calculate_moving_average
 
-def calculate_moving_average(prices):
-    if not prices:
-        return None
-    return sum(prices) / len(prices)
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def consume_price_events():
     kafka_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
@@ -18,13 +21,13 @@ def consume_price_events():
     consumer = KafkaConsumer(
         topic,
         bootstrap_servers=kafka_servers,
-        auto_offset_reset='latest',
+        auto_offset_reset="latest",
         enable_auto_commit=True,
-        group_id='ma-consumers',
-        value_deserializer=lambda x: json.loads(x.decode('utf-8'))
+        group_id="ma-consumers",
+        value_deserializer=lambda x: json.loads(x.decode("utf-8"))
     )
 
-    print("Moving average consumer started and listening...")
+    logger.info("✅ Moving average consumer started and listening...")
 
     db = SessionLocal()
 
@@ -32,9 +35,9 @@ def consume_price_events():
         for message in consumer:
             data = message.value
             symbol = data.get("symbol")
-            timestamp = data.get("timestamp")
 
             if not symbol:
+                logger.warning("✗ Skipping message with no symbol")
                 continue
 
             try:
@@ -46,24 +49,29 @@ def consume_price_events():
                     .all()
                 )
 
-                values = [p.value for p in prices]
+                values = [p.value for p in prices if p.value is not None]
+                if not values:
+                    logger.warning(f"✗ No valid price values for {symbol}, skipping.")
+                    continue
+
                 moving_avg = calculate_moving_average(values)
 
                 avg = SymbolAverage(
                     symbol=symbol,
                     moving_average=moving_avg,
-                    timestamp=datetime.utcnow()  # You can use the latest price timestamp if preferred
+                    timestamp=datetime.utcnow()  # Or use latest price timestamp if needed
                 )
                 db.add(avg)
                 db.commit()
-                print(f"[✓] Stored 5-pt MA for {symbol}: {moving_avg}")
+                logger.info(f"[✓] Stored 5-pt MA for {symbol}: {moving_avg}")
 
             except Exception as e:
                 db.rollback()
-                print(f"[✗] Error: {e}")
+                logger.error(f"[✗] Error while processing {symbol}: {e}")
 
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     consume_price_events()
